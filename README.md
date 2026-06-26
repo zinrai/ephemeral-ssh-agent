@@ -19,14 +19,14 @@ EPHEMERAL_SSH_AGENT_KEYS=<key>[,<key>...] ephemeral-ssh-agent.sh [ssh options] [
 ### Examples
 
 ```
-# Single key
-EPHEMERAL_SSH_AGENT_KEYS=~/.ssh/id_ed25519 ephemeral-ssh-agent.sh user@example.com
+# ProxyJump: the agent authenticates every hop locally; nothing is forwarded
+EPHEMERAL_SSH_AGENT_KEYS=~/.ssh/id_ed25519 ephemeral-ssh-agent.sh -J bastion.example.com target.example.com
+
+# Agent forwarding: expose the agent on the remote so `git pull`, further `ssh`, etc. can use your keys
+EPHEMERAL_SSH_AGENT_KEYS=~/.ssh/id_ed25519 ephemeral-ssh-agent.sh -A user@bastion.example.com
 
 # Multiple keys
-EPHEMERAL_SSH_AGENT_KEYS=~/.ssh/id_ed25519,~/.ssh/work_key ephemeral-ssh-agent.sh user@example.com
-
-# Agent forwarding
-EPHEMERAL_SSH_AGENT_KEYS=~/.ssh/id_ed25519 ephemeral-ssh-agent.sh -A user@bastion.example.com
+EPHEMERAL_SSH_AGENT_KEYS=~/.ssh/id_ed25519,~/.ssh/work_key ephemeral-ssh-agent.sh -J bastion.example.com target.example.com
 ```
 
 ## Dependencies
@@ -38,9 +38,9 @@ EPHEMERAL_SSH_AGENT_KEYS=~/.ssh/id_ed25519 ephemeral-ssh-agent.sh -A user@bastio
 
 ### Why not persist the agent?
 
-ssh-agent is primarily needed for agent forwarding scenarios: connecting from a local PC to a remote server, then using local keys on that remote server to connect to another server or run `git pull`.
+An ephemeral agent only needs to live as long as a single SSH session. Within that session, the agent is consulted for every local authentication: the target host, and each hop of a `ProxyJump` chain. When you also pass `-A`, the same agent is forwarded so that commands on the remote host (such as `git pull` or a further `ssh`) can use your keys.
 
-In this use case, there is only a single SSH connection from the local PC, and an ephemeral agent is sufficient.
+All of these are a single SSH session originating from the local PC, so an agent scoped to that session is sufficient. There is nothing to share across sessions, and therefore nothing to keep running afterward.
 
 ### Why solve it with ssh-agent alone?
 
